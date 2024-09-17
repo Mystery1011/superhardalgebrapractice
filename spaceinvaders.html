@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Space Invaders</title>
+  <style>
+    body {
+      background-color: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+
+    h1 {
+      margin: 20px 0;
+    }
+
+    #game-container {
+      position: relative;
+      width: 600px;
+      height: 600px;
+      background-color: #111;
+      margin: 0 auto;
+      overflow: hidden;
+      border: 2px solid white;
+    }
+
+    #player {
+      position: absolute;
+      bottom: 20px;
+      left: 275px;
+      width: 50px;
+      height: 50px;
+      background-color: green;
+    }
+
+    .invader {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: red;
+    }
+
+    .bullet {
+      position: absolute;
+      width: 5px;
+      height: 20px;
+      background-color: yellow;
+    }
+
+    #scoreboard {
+      display: flex;
+      justify-content: space-around;
+      margin: 10px 0;
+    }
+
+    .score {
+      font-size: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Space Invaders</h1>
+  <div id="scoreboard">
+    <div id="current-score" class="score">Score: 0</div>
+    <div id="high-score" class="score">High Score: 0</div>
+  </div>
+  <div id="game-container">
+    <div id="player"></div>
+  </div>
+
+  <script>
+    const gameContainer = document.getElementById('game-container');
+    const player = document.getElementById('player');
+    const currentScoreDisplay = document.getElementById('current-score');
+    const highScoreDisplay = document.getElementById('high-score');
+
+    let currentScore = 0;
+    let highScore = localStorage.getItem('highScore') || 0;
+    highScoreDisplay.textContent = 'High Score: ' + highScore;
+
+    const playerSpeed = 10;
+    const invaderSpeed = 2;
+    const bulletSpeed = 5;
+
+    let playerX = 275; // Initial position of the player
+    let invaders = [];
+    let bullets = [];
+    let gameInterval;
+
+    // Update scores
+    function updateScore(amount) {
+      currentScore += amount;
+      currentScoreDisplay.textContent = 'Score: ' + currentScore;
+      if (currentScore > highScore) {
+        highScore = currentScore;
+        highScoreDisplay.textContent = 'High Score: ' + highScore;
+        localStorage.setItem('highScore', highScore); // Save high score in local storage
+      }
+    }
+
+    // Player movement
+    function movePlayer(direction) {
+      if (direction === 'left' && playerX > 0) {
+        playerX -= playerSpeed;
+      }
+      if (direction === 'right' && playerX < 550) {
+        playerX += playerSpeed;
+      }
+      player.style.left = playerX + 'px';
+    }
+
+    // Create invaders
+    function createInvader() {
+      const invader = document.createElement('div');
+      invader.classList.add('invader');
+      invader.style.left = Math.random() * 560 + 'px'; // Random position within game container width
+      invader.style.top = '0px';
+      gameContainer.appendChild(invader);
+      invaders.push(invader);
+    }
+
+    // Move invaders
+    function moveInvaders() {
+      invaders.forEach((invader, index) => {
+        let invaderY = parseInt(invader.style.top);
+        invaderY += invaderSpeed;
+        invader.style.top = invaderY + 'px';
+
+        if (invaderY > 580) {
+          // Game Over condition: invader reached the bottom
+          clearInterval(gameInterval);
+          alert('Game Over! Your final score is: ' + currentScore);
+          resetGame();
+        }
+      });
+    }
+
+    // Shoot bullet
+    function shootBullet() {
+      const bullet = document.createElement('div');
+      bullet.classList.add('bullet');
+      bullet.style.left = playerX + 22.5 + 'px'; // Centered on the player
+      bullet.style.bottom = '60px';
+      gameContainer.appendChild(bullet);
+      bullets.push(bullet);
+    }
+
+    // Move bullets
+    function moveBullets() {
+      bullets.forEach((bullet, bulletIndex) => {
+        let bulletY = parseInt(bullet.style.bottom);
+        bulletY += bulletSpeed;
+        bullet.style.bottom = bulletY + 'px';
+
+        // Check collision with invaders
+        invaders.forEach((invader, invaderIndex) => {
+          const bulletRect = bullet.getBoundingClientRect();
+          const invaderRect = invader.getBoundingClientRect();
+
+          if (
+            bulletRect.left < invaderRect.right &&
+            bulletRect.right > invaderRect.left &&
+            bulletRect.top < invaderRect.bottom &&
+            bulletRect.bottom > invaderRect.top
+          ) {
+            // Collision detected
+            gameContainer.removeChild(invader);
+            gameContainer.removeChild(bullet);
+            invaders.splice(invaderIndex, 1);
+            bullets.splice(bulletIndex, 1);
+            updateScore(10); // Increase score by 10 for each invader shot down
+          }
+        });
+
+        // Remove bullets that go off screen
+        if (bulletY > 600) {
+          gameContainer.removeChild(bullet);
+          bullets.splice(bulletIndex, 1);
+        }
+      });
+    }
+
+    // Reset game
+    function resetGame() {
+      invaders.forEach(invader => gameContainer.removeChild(invader));
+      bullets.forEach(bullet => gameContainer.removeChild(bullet));
+      invaders = [];
+      bullets = [];
+      currentScore = 0;
+      currentScoreDisplay.textContent = 'Score: 0';
+      gameInterval = setInterval(gameLoop, 50);
+    }
+
+    // Game loop
+    function gameLoop() {
+      moveInvaders();
+      moveBullets();
+      if (Math.random() < 0.02) {
+        createInvader();
+      }
+    }
+
+    // Handle keypress events
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft') {
+        movePlayer('left');
+      }
+      if (e.key === 'ArrowRight') {
+        movePlayer('right');
+      }
+      if (e.key === ' ') {
+        shootBullet();
+      }
+    });
+
+    // Start the game
+    gameInterval = setInterval(gameLoop, 50);
+  </script>
+
+</body>
+</html>

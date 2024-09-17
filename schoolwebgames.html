@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong Game with Difficulty and Speed Settings</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+        }
+        canvas {
+            background-color: #333;
+            display: block;
+        }
+        #scoreBoard {
+            color: white;
+            position: absolute;
+            top: 20px;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+        }
+        #winner {
+            color: yellow;
+            position: absolute;
+            top: 50px;
+            font-size: 32px;
+            font-family: Arial, sans-serif;
+        }
+        #settings {
+            color: white;
+            position: absolute;
+            top: 90px;
+            font-size: 18px;
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body>
+    <div id="scoreBoard">Player: 0 | AI: 0</div>
+    <div id="winner"></div>
+    <div id="settings">
+        <div>
+            Select Difficulty:
+            <button onclick="setDifficulty('easy')">Easy</button>
+            <button onclick="setDifficulty('medium')">Medium</button>
+            <button onclick="setDifficulty('hard')">Hard</button>
+        </div>
+        <div style="margin-top: 10px;">
+            Select Ball Speed:
+            <button onclick="setSpeed('slow')">Slow</button>
+            <button onclick="setSpeed('normal')">Normal</button>
+            <button onclick="setSpeed('fast')">Fast</button>
+        </div>
+        <div style="margin-top: 10px;">
+            <button onclick="startGame()">Start Game</button>
+        </div>
+    </div>
+    <canvas id="pongCanvas" width="800" height="400" style="display:none;"></canvas>
+
+    <script>
+        const canvas = document.getElementById("pongCanvas");
+        const ctx = canvas.getContext("2d");
+        const scoreBoard = document.getElementById("scoreBoard");
+        const winnerDisplay = document.getElementById("winner");
+        const settings = document.getElementById("settings");
+
+        // Ball
+        let ballRadius = 10;
+        let x = canvas.width / 2;
+        let y = canvas.height / 2;
+        let dx = 2;
+        let dy = -2;
+
+        // Paddles
+        const paddleHeight = 75;
+        const paddleWidth = 10;
+        const paddleSpeed = 4;
+
+        // Left paddle
+        let paddleYLeft = (canvas.height - paddleHeight) / 2;
+
+        // Right paddle (controlled by the computer)
+        let paddleYRight = (canvas.height - paddleHeight) / 2;
+
+        // Difficulty and Speed Settings
+        let aiSpeed = 2;  // Default AI speed for "easy"
+        let ballSpeedMultiplier = 1;  // Default ball speed for "normal"
+
+        // Player movement
+        let upPressed = false;
+        let downPressed = false;
+
+        // Scores
+        let playerScore = 0;
+        let aiScore = 0;
+        const winningScore = 7;
+
+        document.addEventListener("keydown", keyDownHandler, false);
+        document.addEventListener("keyup", keyUpHandler, false);
+
+        function keyDownHandler(e) {
+            if (e.key === "Up" || e.key === "ArrowUp") {
+                upPressed = true;
+            } else if (e.key === "Down" || e.key === "ArrowDown") {
+                downPressed = true;
+            }
+        }
+
+        function keyUpHandler(e) {
+            if (e.key === "Up" || e.key === "ArrowUp") {
+                upPressed = false;
+            } else if (e.key === "Down" || e.key === "ArrowDown") {
+                downPressed = false;
+            }
+        }
+
+        // Draw the ball
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Draw left paddle
+        function drawPaddleLeft() {
+            ctx.beginPath();
+            ctx.rect(0, paddleYLeft, paddleWidth, paddleHeight);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Draw right paddle
+        function drawPaddleRight() {
+            ctx.beginPath();
+            ctx.rect(canvas.width - paddleWidth, paddleYRight, paddleWidth, paddleHeight);
+            ctx.fillStyle = "#fff";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // Move paddles
+        function movePaddles() {
+            // Move left paddle
+            if (upPressed && paddleYLeft > 0) {
+                paddleYLeft -= paddleSpeed;
+            } else if (downPressed && paddleYLeft < canvas.height - paddleHeight) {
+                paddleYLeft += paddleSpeed;
+            }
+
+            // Move right paddle (AI based on difficulty)
+            if (y < paddleYRight + paddleHeight / 2) {
+                paddleYRight -= aiSpeed;
+            } else if (y > paddleYRight + paddleHeight / 2) {
+                paddleYRight += aiSpeed;
+            }
+        }
+
+        // Detect collision
+        function detectCollision() {
+            // Left paddle collision
+            if (x - ballRadius < paddleWidth && y > paddleYLeft && y < paddleYLeft + paddleHeight) {
+                dx = -dx;
+            }
+
+            // Right paddle collision
+            if (x + ballRadius > canvas.width - paddleWidth && y > paddleYRight && y < paddleYRight + paddleHeight) {
+                dx = -dx;
+            }
+
+            // Top and bottom walls
+            if (y + dy < ballRadius || y + dy > canvas.height - ballRadius) {
+                dy = -dy;
+            }
+
+            // Ball out of bounds
+            if (x + dx < 0) {
+                aiScore++;
+                resetBall();
+            }
+            if (x + dx > canvas.width) {
+                playerScore++;
+                resetBall();
+            }
+
+            // Update the score display
+            scoreBoard.innerText = `Player: ${playerScore} | AI: ${aiScore}`;
+
+            // Check if someone has won
+            if (playerScore >= winningScore || aiScore >= winningScore) {
+                declareWinner();
+            }
+        }
+
+        // Reset the ball to the center of the canvas
+        function resetBall() {
+            x = canvas.width / 2;
+            y = canvas.height / 2;
+            dx = 2 * ballSpeedMultiplier;
+            dy = -2 * ballSpeedMultiplier;
+        }
+
+        // Declare the winner
+        function declareWinner() {
+            if (playerScore >= winningScore) {
+                winnerDisplay.innerText = "Player Wins!";
+            } else if (aiScore >= winningScore) {
+                winnerDisplay.innerText = "AI Wins!";
+            }
+
+            // Stop the game
+            dx = 0;
+            dy = 0;
+        }
+
+        // Update game objects
+        function update() {
+            x += dx;
+            y += dy;
+            movePaddles();
+            detectCollision();
+        }
+
+        // Draw everything
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawBall();
+            drawPaddleLeft();
+            drawPaddleRight();
+        }
+
+        // Main game loop
+        function gameLoop() {
+            if (playerScore < winningScore && aiScore < winningScore) {
+                update();
+                draw();
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Set AI difficulty
+        function setDifficulty(level) {
+            if (level === 'easy') {
+                aiSpeed = 2;
+            } else if (level === 'medium') {
+                aiSpeed = 4;
+            } else if (level === 'hard') {
+                aiSpeed = 6;
+            }
+        }
+
+        // Set ball speed
+        function setSpeed(level) {
+            if (level === 'slow') {
+                ballSpeedMultiplier = 0.5;
+            } else if (level === 'normal') {
+                ballSpeedMultiplier = 1;
+            } else if (level === 'fast') {
+                ballSpeedMultiplier = 1.5;
+            }
+        }
+
+        // Start the game
+        function startGame() {
+            settings.style.display = "none";  // Hide settings
+            canvas.style.display = "block";  // Show the canvas
+            resetBall();
+            gameLoop();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blackjack</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: white;
+    }
+    #game {
+      margin: 50px auto;
+      width: 300px;
+      border: 2px solid black;
+      padding: 20px;
+      border-radius: 10px;
+    }
+    .cards {
+      font-size: 24px;
+    }
+    #buttons button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 16px;
+    }
+    #result {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Blackjack</h1>
+  <div id="game">
+    <div id="dealer">
+      <h2>Dealer's Hand</h2>
+      <div id="dealer-cards" class="cards">?</div>
+    </div>
+    <div id="player">
+      <h2>Your Hand</h2>
+      <div id="player-cards" class="cards"></div>
+    </div>
+    <div id="buttons">
+      <button id="hit">Hit</button>
+      <button id="stand">Stand</button>
+    </div>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const deck = [];
+    const suits = ['♠', '♥', '♦', '♣'];
+    const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+    let dealerHand = [];
+    let playerHand = [];
+
+    function createDeck() {
+      for (let suit of suits) {
+        for (let value of values) {
+          deck.push({ value, suit });
+        }
+      }
+    }
+
+    function shuffleDeck() {
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+    }
+
+    function getCardValue(card) {
+      if (['J', 'Q', 'K'].includes(card.value)) {
+        return 10;
+      } else if (card.value === 'A') {
+        return 11;
+      } else {
+        return parseInt(card.value);
+      }
+    }
+
+    function calculateHandValue(hand) {
+      let value = 0;
+      let aceCount = 0;
+      for (let card of hand) {
+        value += getCardValue(card);
+        if (card.value === 'A') aceCount++;
+      }
+      while (value > 21 && aceCount > 0) {
+        value -= 10;
+        aceCount--;
+      }
+      return value;
+    }
+
+    function dealCard(hand) {
+      hand.push(deck.pop());
+    }
+
+    function renderHands() {
+      document.getElementById('player-cards').innerText = playerHand.map(card => `${card.value}${card.suit}`).join(' ');
+      document.getElementById('dealer-cards').innerText = dealerHand.map(card => `${card.value}${card.suit}`).join(' ');
+    }
+
+    function checkForEndGame() {
+      const playerValue = calculateHandValue(playerHand);
+      const dealerValue = calculateHandValue(dealerHand);
+
+      if (playerValue > 21) {
+        document.getElementById('result').innerText = 'You bust! Dealer wins.';
+        disableButtons();
+      } else if (dealerValue > 21) {
+        document.getElementById('result').innerText = 'Dealer busts! You win!';
+        disableButtons();
+      } else if (dealerValue >= 17) {
+        if (playerValue > dealerValue) {
+          document.getElementById('result').innerText = 'You win!';
+        } else if (playerValue < dealerValue) {
+          document.getElementById('result').innerText = 'Dealer wins!';
+        } else {
+          document.getElementById('result').innerText = 'It\'s a tie!';
+        }
+        disableButtons();
+      }
+    }
+
+    function disableButtons() {
+      document.getElementById('hit').disabled = true;
+      document.getElementById('stand').disabled = true;
+    }
+
+    document.getElementById('hit').addEventListener('click', () => {
+      dealCard(playerHand);
+      renderHands();
+      const playerValue = calculateHandValue(playerHand);
+      if (playerValue > 21) {
+        document.getElementById('result').innerText = 'You bust! Dealer wins.';
+        disableButtons();
+      }
+    });
+
+    document.getElementById('stand').addEventListener('click', () => {
+      let dealerValue = calculateHandValue(dealerHand);
+      while (dealerValue < 17) {
+        dealCard(dealerHand);
+        dealerValue = calculateHandValue(dealerHand);
+      }
+      renderHands();
+      checkForEndGame();
+    });
+
+    function startGame() {
+      createDeck();
+      shuffleDeck();
+      dealerHand = [];
+      playerHand = [];
+      dealCard(playerHand);
+      dealCard(playerHand);
+      dealCard(dealerHand);
+      dealCard(dealerHand);
+      renderHands();
+      document.getElementById('result').innerText = '';
+      document.getElementById('hit').disabled = false;
+      document.getElementById('stand').disabled = false;
+    }
+
+    startGame();
+  </script>
+</body>
+</html>
+
